@@ -23,6 +23,8 @@ import (
 
 	container "cloud.google.com/go/container/apiv1"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
+	"google.golang.org/api/option"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +51,16 @@ var workloadCmd = &cobra.Command{
 		workloadName := args[0]
 		ctx := context.Background()
 
-		gkeClient, err := container.NewClusterManagerClient(ctx)
+		gkeClient, err := container.NewClusterManagerClient(ctx, option.WithTokenSource(getTokenFromConfig(ctx)))
+
+		// TODO: for inspection support
+		/*
+			if kubeconfigpath != "" {
+				gkeClient, err = container.NewClusterManagerClient(ctx, )
+			} else {
+				gkeClient, err = container.NewClusterManagerClient(ctx)
+			}*/
+
 		if err != nil {
 			log.Fatalf("❌ Failed to create GKE client: %v", err)
 		}
@@ -133,4 +144,13 @@ func init() {
 	checkCmd.AddCommand(workloadCmd)
 	workloadCmd.Flags().StringVarP(&workloadNamespace, "namespace", "n", "default", "Kubernetes namespace of the workload")
 	workloadCmd.Flags().StringVarP(&workloadType, "type", "t", "deployment", "Type of the workload (deployment, statefulset, daemonset, job, cronjob)")
+}
+
+func getTokenFromConfig(ctx context.Context) oauth2.TokenSource {
+	if accessToken == "" {
+		return nil
+	}
+	return oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: accessToken,
+	})
 }

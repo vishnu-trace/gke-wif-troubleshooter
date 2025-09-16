@@ -7,8 +7,10 @@ toolchain go1.24.6
 require (
 	cloud.google.com/go/container v1.44.0
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.239.0
 	google.golang.org/genproto v0.0.0-20250505200425-f936aa4a68b2
+	k8s.io/api v0.30.2
 	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v0.30.2
 )
@@ -50,7 +52,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
@@ -63,7 +64,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.30.2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0 // indirect

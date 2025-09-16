@@ -21,6 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var accessToken string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gke-wif-troubleshooter",
@@ -32,9 +34,6 @@ Kubernetes Engine (GKE).
 It helps you verify that your GKE clusters, Kubernetes Service Accounts, and
 Google Service Accounts are correctly configured to allow your GKE workloads to
 securely access Google Cloud services.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -55,4 +54,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
+	accessToken = os.Getenv("ACCESS_TOKEN")
 }

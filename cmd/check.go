@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	container "cloud.google.com/go/container/apiv1"
@@ -30,13 +32,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/exec"
 	"k8s.io/client-go/rest"
+	clientcmd "k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
-	projectID   string
-	location    string
-	clusterName string
+	projectID      string
+	location       string
+	clusterName    string
+	kubeconfigpath string
+	kubeconfig     map[string]interface{}
 )
 
 // checkCmd represents the check command
@@ -54,10 +59,28 @@ func init() {
 	checkCmd.PersistentFlags().StringVar(&projectID, "project", "", "GCP project ID (required)")
 	checkCmd.PersistentFlags().StringVar(&location, "location", "", "GKE cluster location (region or zone) (required)")
 	checkCmd.PersistentFlags().StringVar(&clusterName, "cluster", "", "GKE cluster name (required)")
+	checkCmd.PersistentFlags().BoolFunc("local-kubeconfig", "Use local GKE cluster kubeconfig (optional)", getKubeconfig)
 
 	checkCmd.MarkPersistentFlagRequired("project")
 	checkCmd.MarkPersistentFlagRequired("location")
 	checkCmd.MarkPersistentFlagRequired("cluster")
+}
+
+// generate kubeconfig path if --local-kubeconfig flag used
+func getKubeconfig(string) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Errorf("❌ Failed to retrieve home directory: %v", err)
+		return err
+	}
+	kubeconfigpath = filepath.Join(homeDir, ".kube", "config")
+
+	_, err = os.Stat(kubeconfigpath)
+	if err != nil {
+		fmt.Errorf("❌ Failed to find local kubeconfig at: %v/n. More details %w", kubeconfigpath, err)
+		return err
+	}
+	return nil
 }
 
 // getGKECluster retrieves GKE cluster details.
@@ -70,24 +93,32 @@ func getGKECluster(ctx context.Context, client *container.ClusterManagerClient, 
 
 // getK8sClientset creates a Kubernetes clientset from GKE cluster data.
 func getK8sClientset(cluster *containerpb.Cluster) (*kubernetes.Clientset, error) {
-	caDec, err := base64.StdEncoding.DecodeString(cluster.MasterAuth.ClusterCaCertificate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode cluster CA certificate: %w", err)
-	}
+	var config *rest.Config
+	if kubeconfigpath == "" {
+		caDec, err := base64.StdEncoding.DecodeString(cluster.MasterAuth.ClusterCaCertificate)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode cluster CA certificate: %w", err)
+		}
 
-	config := &rest.Config{
-		Host: "https://" + cluster.Endpoint,
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData: caDec,
-		},
-		ExecProvider: &clientcmdapi.ExecConfig{
-			APIVersion:         "client.authentication.k8s.io/v1beta1",
-			Command:            "gke-gcloud-auth-plugin",
-			ProvideClusterInfo: true,
-			InteractiveMode:    "Never",
-		},
+		config = &rest.Config{
+			Host: "https://" + cluster.Endpoint,
+			TLSClientConfig: rest.TLSClientConfig{
+				CAData: caDec,
+			},
+			ExecProvider: &clientcmdapi.ExecConfig{
+				APIVersion:         "client.authentication.k8s.io/v1beta1",
+				Command:            "gke-gcloud-auth-plugin",
+				ProvideClusterInfo: true,
+				InteractiveMode:    "Never",
+			},
+		}
+	} else {
+		var err error
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfigpath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build config from kubeconfig: %w", err)
+		}
 	}
-
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create clientset from config: %w", err)

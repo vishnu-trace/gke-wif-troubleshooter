@@ -9,7 +9,6 @@ require (
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.239.0
-	google.golang.org/genproto v0.0.0-20250505200425-f936aa4a68b2
 	k8s.io/api v0.30.2
 	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v0.30.2

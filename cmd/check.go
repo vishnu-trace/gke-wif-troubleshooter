@@ -25,9 +25,14 @@ import (
 
 	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
+	iam "cloud.google.com/go/iam/admin/apiv1"
+	iampb "cloud.google.com/go/iam/apiv1/iampb"
+	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/spf13/cobra"
-	"google.golang.org/api/cloudresourcemanager/v1"
-	"google.golang.org/api/iam/v1"
+	"github.com/vishnu-trace/gke-wif-troubleshooter/internal/auth"
+	"golang.org/x/oauth2"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/exec"
@@ -81,6 +86,13 @@ func getKubeconfig(string) error {
 		return err
 	}
 	return nil
+}
+
+// newGKEClient creates a new GKE ClusterManagerClient with the necessary options,
+// including the inspection token if it's set.
+func newGKEClient(ctx context.Context) (*container.ClusterManagerClient, error) {
+	gkeClient, err := container.NewClusterManagerClient(ctx, getClientOptions(ctx)...)
+	return gkeClient, err
 }
 
 // getGKECluster retrieves GKE cluster details.
@@ -152,11 +164,6 @@ func performKsaCheck(ctx context.Context, ksaNamespace, ksaName string, cluster 
 	gsaAnnotation := "iam.gke.io/gcp-service-account"
 	gsaEmail, ok := ksa.Annotations[gsaAnnotation]
 
-	iamService, err := iam.NewService(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create IAM client: %w", err)
-	}
-
 	legacySyntax := fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", projectID, ksaNamespace, ksaName)
 	principalSchema := fmt.Sprintf("%s.svc.id.goog/subject/ns/%s/sa/%s", projectID, ksaNamespace, ksaName)
 
@@ -167,12 +174,15 @@ func performKsaCheck(ctx context.Context, ksaNamespace, ksaName string, cluster 
 		fmt.Println("   ℹ️  This is not necessarily an error. Checking for direct IAM role bindings on the KSA principal...")
 
 		fmt.Println("\n3. Checking for direct IAM bindings for KSA principal at the project level...")
-		crmService, err := cloudresourcemanager.NewService(ctx)
+		projectsClient, err := resourcemanager.NewProjectsClient(ctx, getClientOptions(ctx)...)
 		if err != nil {
 			return fmt.Errorf("failed to create Cloud Resource Manager client: %w", err)
 		}
+		defer projectsClient.Close()
 
-		policy, err := crmService.Projects.GetIamPolicy(projectID, &cloudresourcemanager.GetIamPolicyRequest{}).Do()
+		policy, err := projectsClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{
+			Resource: "projects/" + projectID,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to get IAM policy for project '%s': %w", projectID, err)
 		}
@@ -200,37 +210,60 @@ func performKsaCheck(ctx context.Context, ksaNamespace, ksaName string, cluster 
 			fmt.Println("   Please ensure these roles provide the necessary permissions for your workload to function.")
 		}
 	} else {
+
 		fmt.Printf("   ✅ KSA is annotated with GSA: %s\n", gsaEmail)
 
 		fmt.Printf("\n3. Checking IAM binding for GSA '%s'...\n", gsaEmail)
-		iamPolicy, err := iamService.Projects.ServiceAccounts.GetIamPolicy("projects/-/serviceAccounts/" + gsaEmail).Do()
+
+		// TODO: once inscpection capability for getIamPolicy is restored remove this.
+		if inspectionToken != "" {
+			fmt.Println("Currently serviceaccount IAM policy retreival is blocked using inspection token. Consider checking manually.")
+			return nil
+		}
+
+		iamClient, err := iam.NewIamClient(ctx, getClientOptions(ctx)...)
+		if err != nil {
+			return fmt.Errorf("failed to create IAM client: %w", err)
+		}
+		defer iamClient.Close()
+
+		iamPolicy, err := iamClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{
+			Resource: fmt.Sprintf("projects/%s/serviceAccounts/%s", projectID, gsaEmail),
+		})
+
 		if err != nil {
 			return fmt.Errorf("failed to get IAM policy for GSA '%s' (does it exist?): %w", gsaEmail, err)
 		}
 
-		role := "roles/iam.workloadIdentityUser"
-		bindingFound := false
-		for _, binding := range iamPolicy.Bindings {
-			if binding.Role == role {
-				for _, m := range binding.Members {
-					if m == legacySyntax {
-						bindingFound = true
-						break
-					}
-				}
-			}
-			if bindingFound {
-				break
-			}
-		}
+		bindingFound := iamPolicy.HasRole(fmt.Sprintf("serviceAccount:%s.svc.id.goog[%s/%s]", projectID, ksaNamespace, ksaName), "roles/iam.workloadIdentityUser")
 
 		if !bindingFound {
 			return fmt.Errorf("IAM binding not found. Run the following command to fix:\n\ngcloud iam service-accounts add-iam-policy-binding %s \\\n  --role=roles/iam.workloadIdentityUser \\\n  --member=\"serviceAccount:%s.svc.id.goog[%s/%s]\"", gsaEmail, projectID, ksaNamespace, ksaName)
 		}
-		fmt.Printf("   ✅ Found IAM binding for member '%s' with role '%s'.\n", legacySyntax, role)
+		fmt.Printf("   ✅ Found IAM binding for member '%s' with role roles/iam.workloadIdentityUser\n", legacySyntax)
 
 		fmt.Println("-------------------------------------------------------------")
 		fmt.Println("🎉 All checks passed! Your Workload Identity setup seems correct for this KSA.")
 	}
 	return nil
+}
+
+func getTokenFromConfig(ctx context.Context) oauth2.TokenSource {
+	if accessToken == "" {
+		return nil
+	}
+	return oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: accessToken,
+	})
+}
+
+func getClientOptions(ctx context.Context) []option.ClientOption {
+	clientOpts := []option.ClientOption{
+		option.WithTokenSource(getTokenFromConfig(ctx)),
+	}
+
+	if inspectionToken != "" {
+		clientOpts = append(clientOpts, option.WithGRPCDialOption(grpc.WithPerRPCCredentials(&auth.InspectionTokenCreds{InspectionToken: inspectionToken})))
+	}
+	return clientOpts
 }

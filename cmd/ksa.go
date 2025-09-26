@@ -19,9 +19,7 @@ import (
 	"context"
 	"log"
 
-	container "cloud.google.com/go/container/apiv1"
 	"github.com/spf13/cobra"
-	"google.golang.org/api/option"
 )
 
 var ksaNamespace string
@@ -38,7 +36,7 @@ It checks for the required annotation on the KSA and the corresponding IAM bindi
 		ksaName := args[0]
 		ctx := context.Background()
 
-		gkeClient, err := container.NewClusterManagerClient(ctx, option.WithTokenSource(getTokenFromConfig(ctx)))
+		gkeClient, err := newGKEClient(ctx)
 		if err != nil {
 			log.Fatalf("❌ Failed to create GKE client: %v", err)
 		}

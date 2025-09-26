@@ -8,6 +8,12 @@ cloud.google.com/go/compute/metadata v0.7.0 h1:PBWF+iiAerVNe8UCHxdOt6eHLVc3ydFeO
 cloud.google.com/go/compute/metadata v0.7.0/go.mod h1:j5MvL9PprKL39t166CoB1uVHfQMs4tFQZZcKwksXUjo=
 cloud.google.com/go/container v1.44.0 h1:JEHeW535svvNwJrjrlQ/cdjd15LCWrPKnHsulrufd3A=
 cloud.google.com/go/container v1.44.0/go.mod h1:tVK2o4UZUTkg9WpBcgj4qRzwGA1dSFdWA3mil3YkLIQ=
+cloud.google.com/go/iam v1.5.2 h1:qgFRAGEmd8z6dJ/qyEchAuL9jpswyODjA2lS+w234g8=
+cloud.google.com/go/iam v1.5.2/go.mod h1:SE1vg0N81zQqLzQEwxL2WI6yhetBdbNQuTvIKCSkUHE=
+cloud.google.com/go/longrunning v0.6.7 h1:IGtfDWHhQCgCjwQjV9iiLnUta9LBCo8R9QmAFsS/PrE=
+cloud.google.com/go/longrunning v0.6.7/go.mod h1:EAFV3IZAKmM56TyiE6VAP3VoTzhZzySwI/YI1s/nRsY=
+cloud.google.com/go/resourcemanager v1.10.6 h1:LIa8kKE8HF71zm976oHMqpWFiaDHVw/H1YMO71lrGmo=
+cloud.google.com/go/resourcemanager v1.10.6/go.mod h1:VqMoDQ03W4yZmxzLPrB+RuAoVkHDS5tFUUQUhOtnRTg=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

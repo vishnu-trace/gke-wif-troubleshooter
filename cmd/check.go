@@ -131,6 +131,7 @@ func getK8sClientset(cluster *containerpb.Cluster) (*kubernetes.Clientset, error
 			return nil, fmt.Errorf("failed to build config from kubeconfig: %w", err)
 		}
 	}
+	config.UserAgent = userAgentHeader
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create clientset from config: %w", err)
@@ -262,8 +263,7 @@ func getClientOptions(ctx context.Context) []option.ClientOption {
 		option.WithTokenSource(getTokenFromConfig(ctx)),
 	}
 
-	if inspectionToken != "" {
-		clientOpts = append(clientOpts, option.WithGRPCDialOption(grpc.WithPerRPCCredentials(&auth.InspectionTokenCreds{InspectionToken: inspectionToken})))
-	}
+	clientOpts = append(clientOpts, option.WithGRPCDialOption(grpc.WithPerRPCCredentials(&auth.InspectionTokenCreds{InspectionToken: inspectionToken, UserAgentHeader: userAgentHeader})))
+
 	return clientOpts
 }

@@ -31,6 +31,7 @@ var ksaCmd = &cobra.Command{
 	Long: `Analyzes a given Kubernetes Service Account (KSA) to verify its Workload Identity setup.
 
 It checks for the required annotation on the KSA and the corresponding IAM binding on the associated Google Service Account (GSA).`,
+
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ksaName := args[0]

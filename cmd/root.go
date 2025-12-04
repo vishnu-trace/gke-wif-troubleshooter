@@ -23,6 +23,9 @@ import (
 
 var accessToken, inspectionToken string
 
+// Header Declartion
+const userAgentHeader = "gke-wif-troubleshooter"
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "gke-wif-troubleshooter",

@@ -140,7 +140,7 @@ func getK8sClientset(cluster *containerpb.Cluster) (*kubernetes.Clientset, error
 }
 
 // performKsaCheck carries out the actual validation for a given KSA.
-func performKsaCheck(ctx context.Context, ksaNamespace, ksaName string, cluster *containerpb.Cluster, clientset *kubernetes.Clientset) error {
+func performKsaCheck(ctx context.Context, ksaNamespace, ksaName string, cluster *containerpb.Cluster, clientset kubernetes.Interface) error {
 	fmt.Printf("🔎 Starting GKE Workload Identity analysis for KSA: %s/%s\n", ksaNamespace, ksaName)
 	fmt.Println("-------------------------------------------------------------")
 

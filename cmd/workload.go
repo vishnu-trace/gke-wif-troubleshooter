@@ -78,7 +78,7 @@ var workloadCmd = &cobra.Command{
 	},
 }
 
-func getKsaFromWorkload(ctx context.Context, clientset *kubernetes.Clientset, namespace, name, wType string) (string, error) {
+func getKsaFromWorkload(ctx context.Context, clientset kubernetes.Interface, namespace, name, wType string) (string, error) {
 	var serviceAccountName string
 	var err error
 
